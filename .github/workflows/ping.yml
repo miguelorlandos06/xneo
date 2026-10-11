@@ -1,0 +1,15 @@
+name: Ping Bot
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping
+        run: |
+          curl -sS -m 30 -o /dev/null -w "%{http_code}\n" \
+            "https://xneo-web.onrender.com/health" || true
