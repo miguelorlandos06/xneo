@@ -226,7 +226,6 @@ async def on_shutdown():
         await pool.close()
 
 
-@app.get("/")
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "xneo"}
