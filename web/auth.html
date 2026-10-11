@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>XNEO · Acceso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand">X<span>NEO</span></div>
+    <p class="sub">Accede o crea tu cuenta</p>
+    <div class="tabs">
+      <button id="tab-login" class="active" type="button">Entrar</button>
+      <button id="tab-register" type="button">Registro</button>
+    </div>
+    <form id="form-login">
+      <div class="field"><label for="login-user">Usuario o email</label>
+        <input id="login-user" type="text" placeholder="tu_usuario" autocomplete="username" required /></div>
+      <div class="field"><label for="login-pass">Contraseña</label>
+        <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" required /></div>
+      <button class="btn" type="submit" id="btn-login">Entrar</button>
+      <p class="form-msg" id="login-msg"></p>
+    </form>
+    <form id="form-register" class="hidden">
+      <div class="field"><label for="reg-user">Usuario</label>
+        <input id="reg-user" type="text" placeholder="tu_usuario" autocomplete="username" required minlength="3" /></div>
+      <div class="field"><label for="reg-email">Email</label>
+        <input id="reg-email" type="email" placeholder="tu@email.com" autocomplete="email" required /></div>
+      <div class="field"><label for="reg-pass">Contraseña</label>
+        <input id="reg-pass" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password" required minlength="6" /></div>
+      <button class="btn" type="submit" id="btn-register">Crear cuenta</button>
+      <p class="form-msg" id="register-msg"></p>
+    </form>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+function setMsg(el, text, type = 'error') { el.textContent = text; el.className = 'form-msg ' + type; }
+if (XNEO.isLogged()) location.replace('web.html');
+$('#tab-login').onclick = () => switchTab('login');
+$('#tab-register').onclick = () => switchTab('register');
+function switchTab(tab) {
+  const isLogin = tab === 'login';
+  $('#tab-login').classList.toggle('active', isLogin);
+  $('#tab-register').classList.toggle('active', !isLogin);
+  $('#form-login').classList.toggle('hidden', !isLogin);
+  $('#form-register').classList.toggle('hidden', isLogin);
+  $('#login-msg').textContent = ''; $('#register-msg').textContent = '';
+}
+$('#form-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#btn-login'), msg = $('#login-msg');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try {
+    const data = await XNEO.api('/api/auth/login', { method: 'POST',
+      body: JSON.stringify({ identifier: $('#login-user').value.trim(), password: $('#login-pass').value }) });
+    XNEO.setSession(data.token, data.user);
+    setMsg(msg, 'Acceso correcto. Redirigiendo…', 'ok');
+    setTimeout(() => location.href = 'web.html', 400);
+  } catch (err) { setMsg(msg, err.message || 'Error al entrar'); }
+  finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+});
+$('#form-register').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#btn-register'), msg = $('#register-msg');
+  btn.disabled = true; btn.textContent = 'Creando…';
+  try {
+    const data = await XNEO.api('/api/auth/register', { method: 'POST',
+      body: JSON.stringify({ username: $('#reg-user').value.trim(),
+        email: $('#reg-email').value.trim(), password: $('#reg-pass').value }) });
+    XNEO.setSession(data.token, data.user);
+    setMsg(msg, '¡Cuenta creada! Redirigiendo…', 'ok');
+    setTimeout(() => location.href = 'web.html', 500);
+  } catch (err) { setMsg(msg, err.message || 'Error al registrar'); }
+  finally { btn.disabled = false; btn.textContent = 'Crear cuenta'; }
+});
+</script>
+</body>
+</html>

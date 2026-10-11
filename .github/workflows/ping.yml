@@ -12,4 +12,4 @@ jobs:
       - name: Ping
         run: |
           curl -sS -m 30 -o /dev/null -w "%{http_code}\n" \
-            "https://xneo-web.onrender.com/health" || true
+            "https://xneo-3znw.onrender.com/health" || true

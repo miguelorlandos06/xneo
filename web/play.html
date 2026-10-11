@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>XNEO · Reproduciendo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+</head>
+<body>
+<header class="header">
+  <div class="logo" onclick="location.href='web.html'">X<span>NEO</span></div>
+  <button class="logout" onclick="location.href='web.html'">← Volver</button>
+</header>
+<div class="container">
+  <div class="player-wrap"><video id="video" controls playsinline></video></div>
+  <h1 class="play-title" id="video-title">Cargando…</h1>
+  <div class="play-meta">
+    <span class="cat" id="video-cat">—</span>
+    <span id="video-views">—</span>
+    <span class="dot"></span>
+    <span id="video-date">—</span>
+  </div>
+  <div class="actions">
+    <button class="action-btn" id="like-btn">
+      <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C.7 8.9 2.2 5 5.7 5c2 0 3.3 1.2 4.3 2.6C11 6.2 12.3 5 14.3 5c3.5 0 5 3.9 3.2 7-2.5 4.5-9.5 9-9.5 9z"/></svg>
+      <span class="count" id="like-count">0</span>
+    </button>
+    <button class="action-btn" id="dislike-btn">
+      <svg viewBox="0 0 24 24"><path d="M20 3H8.6c-1 0-1.9.6-2.3 1.5l-3.2 7.8c-.4 1-.2 2.2.7 2.9.4.3 1 .5 1.5.5H10l-1.3 5.2c-.2.9.4 1.8 1.3 2 .2 0 .4.1.5.1.7 0 1.4-.3 1.8-.9l4.6-5.6h3.1c.6 0 1-.4 1-1V4c0-.6-.4-1-1-1z"/></svg>
+      <span class="count" id="dislike-count">0</span>
+    </button>
+    <button class="action-btn download" id="download-btn">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Descargar
+    </button>
+  </div>
+  <section class="comments">
+    <h2>Comentarios <span class="num" id="comment-count">0</span></h2>
+    <form class="comment-form" id="comment-form">
+      <div class="avatar" id="user-avatar">U</div>
+      <div class="input-wrap">
+        <textarea id="comment-input" placeholder="Escribe un comentario..." maxlength="500"></textarea>
+        <div class="actions-row"><button type="submit" class="btn-send" id="send-btn" disabled>Publicar</button></div>
+      </div>
+    </form>
+    <div class="comment-list" id="comment-list"></div>
+  </section>
+</div>
+<footer class="footer">X<span>N</span>EO © 2026</footer>
+<script src="assets/app.js"></script>
+<script>
+if (!XNEO.requireLogin()) throw new Error('no auth');
+const $ = (s) => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const videoId = parseInt(params.get('id') || '0', 10);
+if (!videoId) { location.href = 'web.html'; throw new Error('no id'); }
+const me = XNEO.user();
+$('#user-avatar').textContent = (me?.username || 'U').charAt(0).toUpperCase();
+let videoData = null; let myReaction = null;
+function loadHLS(url) {
+  const el = $('#video');
+  if (el.canPlayType('application/vnd.apple.mpegurl')) { el.src = url; return; }
+  if (window.Hls && Hls.isSupported()) {
+    const hls = new Hls({ lowLatencyMode: false, maxBufferLength: 30, enableWorker: true });
+    hls.loadSource(url); hls.attachMedia(el);
+    hls.on(Hls.Events.ERROR, (_, data) => {
+      if (!data.fatal) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+      else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+      else { console.error('HLS fatal', data); hls.destroy(); }
+    });
+  } else { XNEO.toast('HLS no soportado'); }
+}
+function paintReaction() {
+  $('#like-btn').classList.toggle('active-like', myReaction === 'like');
+  $('#dislike-btn').classList.toggle('active-dislike', myReaction === 'dislike');
+  $('#like-count').textContent = XNEO.fmtNum(videoData.likes);
+  $('#dislike-count').textContent = XNEO.fmtNum(videoData.dislikes);
+}
+async function loadVideo() {
+  try {
+    videoData = await XNEO.api(`/api/video/${videoId}`);
+    $('#video-title').textContent = videoData.title;
+    $('#video-cat').textContent = videoData.category;
+    $('#video-views').textContent = XNEO.fmtNum(videoData.views) + ' vistas';
+    $('#video-date').textContent = XNEO.timeAgo(videoData.created_at);
+    if (videoData.thumb_url) $('#video').poster = videoData.thumb_url;
+    if (videoData.hls_url) loadHLS(videoData.hls_url);
+    paintReaction(); loadComments();
+  } catch (err) { $('#video-title').textContent = 'No disponible'; XNEO.toast(err.message); }
+}
+async function react(kind) {
+  try {
+    const res = await XNEO.api(`/api/video/${videoId}/react`, { method: 'POST', body: JSON.stringify({ kind }) });
+    videoData.likes = res.likes; videoData.dislikes = res.dislikes;
+    myReaction = res.action === 'removed' ? null : kind;
+    paintReaction();
+    XNEO.toast(res.action === 'removed' ? 'Reacción quitada' : 'Reacción guardada');
+  } catch (err) { XNEO.toast(err.message); }
+}
+$('#like-btn').onclick = () => react('like');
+$('#dislike-btn').onclick = () => react('dislike');
+$('#download-btn').onclick = () => { if (!videoData?.hls_url) return XNEO.toast('Sin video'); window.open(videoData.hls_url, '_blank'); };
+const input = $('#comment-input'); const sendBtn = $('#send-btn');
+input.addEventListener('input', () => { sendBtn.disabled = input.value.trim().length === 0; });
+async function loadComments() {
+  try {
+    const data = await XNEO.api(`/api/video/${videoId}/comments`);
+    const items = data.items || [];
+    $('#comment-count').textContent = items.length;
+    if (items.length === 0) { $('#comment-list').innerHTML = `<div class="no-comments"><strong>Sé el primero en comentar</strong>Comparte lo que piensas sobre este video.</div>`; return; }
+    $('#comment-list').innerHTML = items.map(c => {
+      const isMine = c.user_id === me.id || c.username === me.username;
+      return `<div class="comment" data-id="${c.id}">
+        <div class="avatar">${XNEO.escapeHtml((c.username||'U').charAt(0).toUpperCase())}</div>
+        <div class="body">
+          <div class="head"><span class="name">${XNEO.escapeHtml(c.username)}</span>${isMine ? '<span class="you">Tú</span>' : ''}<span class="time">${XNEO.timeAgo(c.created_at)}</span></div>
+          <div class="text">${XNEO.escapeHtml(c.text)}</div>
+        </div>
+        ${isMine ? `<button class="del" data-del="${c.id}">Eliminar</button>` : ''}
+      </div>`;
+    }).join('');
+  } catch (err) { $('#comment-list').innerHTML = `<div class="no-comments">${XNEO.escapeHtml(err.message)}</div>`; }
+}
+$('#comment-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = input.value.trim(); if (!text) return;
+  sendBtn.disabled = true;
+  try {
+    await XNEO.api(`/api/video/${videoId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
+    input.value = ''; XNEO.toast('Comentario publicado'); loadComments();
+  } catch (err) { XNEO.toast(err.message); }
+  finally { sendBtn.disabled = input.value.trim().length === 0; }
+});
+$('#comment-list').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-del]'); if (!btn) return;
+  try { await XNEO.api(`/api/video/${videoId}/comments/${btn.dataset.del}`, { method: 'DELETE' }); XNEO.toast('Comentario eliminado'); loadComments(); }
+  catch (err) { XNEO.toast(err.message); }
+});
+loadVideo();
+</script>
+</body>
+</html>

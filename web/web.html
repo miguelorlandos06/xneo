@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>XNEO · Inicio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+<header class="header">
+  <div class="logo" onclick="location.href='web.html'">X<span>NEO</span></div>
+  <div class="user-box">
+    <div class="avatar" id="avatar" title="Mi cuenta">U</div>
+    <button class="logout" id="logout">Salir</button>
+  </div>
+</header>
+<div class="page-head">
+  <div class="kicker">Explorar</div>
+  <h1 id="page-title">Hetero</h1>
+  <p id="count-label">Cargando…</p>
+</div>
+<div class="filters" id="filters">
+  <button class="chip active" data-cat="hetero">Hetero</button>
+  <button class="chip" data-cat="bi">Bi</button>
+  <button class="chip" data-cat="gay">Gay</button>
+</div>
+<section class="grid" id="grid"></section>
+<footer class="footer">X<span>N</span>EO © 2026</footer>
+<script src="assets/app.js"></script>
+<script>
+if (!XNEO.requireLogin()) throw new Error('no auth');
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+let activeCat = 'hetero';
+const u = XNEO.user();
+if (u) { $('#avatar').textContent = (u.username || 'U').charAt(0).toUpperCase(); $('#avatar').title = u.username; }
+$('#logout').onclick = () => XNEO.logout();
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function showSkeletons(n = 8) { $('#grid').innerHTML = Array.from({ length: n }).map(() => '<div class="skeleton"></div>').join(''); }
+async function loadVideos() {
+  $('#page-title').textContent = capitalize(activeCat);
+  $('#count-label').textContent = 'Cargando…';
+  showSkeletons();
+  try {
+    const data = await XNEO.api(`/api/videos?cat=${encodeURIComponent(activeCat)}&limit=60`);
+    const items = data.items || [];
+    $('#count-label').textContent = items.length === 0 ? 'Sin resultados' : `${items.length} video${items.length !== 1 ? 's' : ''} en ${activeCat}`;
+    if (items.length === 0) { $('#grid').innerHTML = `<div class="empty"><strong>Nada por aquí</strong>No hay videos en esta categoría.</div>`; return; }
+    $('#grid').innerHTML = items.map((v, i) => `
+      <article class="card" data-id="${v.id}" style="animation-delay:${i * 40}ms">
+        <div class="thumb">
+          <span class="tag">${XNEO.escapeHtml(v.category)}</span>
+          ${v.thumb_url ? `<img src="${XNEO.escapeHtml(v.thumb_url)}" alt="" loading="lazy" />` : `<div style="width:100%;height:100%;background:#111;"></div>`}
+          <div class="play-overlay"><span><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></div>
+          <span class="dur">${XNEO.fmtDuration(v.duration)}</span>
+        </div>
+        <div class="meta">
+          <h3>${XNEO.escapeHtml(v.title)}</h3>
+          <div class="stats">
+            <span><svg viewBox="0 0 24 24"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 11a4 4 0 110-8 4 4 0 010 8z"/></svg>${XNEO.fmtNum(v.views)}</span>
+            <span><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C.7 8.9 2.2 5 5.7 5c2 0 3.3 1.2 4.3 2.6C11 6.2 12.3 5 14.3 5c3.5 0 5 3.9 3.2 7-2.5 4.5-9.5 9-9.5 9z"/></svg>${XNEO.fmtNum(v.likes)}</span>
+          </div>
+        </div>
+      </article>`).join('');
+  } catch (err) {
+    $('#count-label').textContent = 'Error';
+    $('#grid').innerHTML = `<div class="empty"><strong>No pude cargar</strong>${XNEO.escapeHtml(err.message)}</div>`;
+  }
+}
+$$('#filters .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const cat = chip.dataset.cat;
+    if (activeCat === cat) return;
+    activeCat = cat;
+    $$('#filters .chip').forEach(c => c.classList.toggle('active', c === chip));
+    loadVideos();
+  });
+});
+$('#grid').addEventListener('click', (e) => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  location.href = `play.html?id=${card.dataset.id}`;
+});
+loadVideos();
+</script>
+</body>
+</html>

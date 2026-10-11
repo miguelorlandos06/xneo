@@ -20,7 +20,10 @@ import asyncpg
 from botocore import UNSIGNED
 from botocore.config import Config as BotoConfig
 
+import os
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -452,6 +455,36 @@ async def admin_notified(job_id: str):
     async with pool.acquire() as con:
         await con.execute("UPDATE videos SET notified_at=NOW() WHERE job_id=$1", job_id)
     return {"ok": True}
+
+
+# ============================================================
+# FRONTEND ESTÁTICO (web/)
+# ============================================================
+WEB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
+if os.path.isdir(WEB_DIR):
+    _assets = os.path.join(WEB_DIR, "assets")
+    if os.path.isdir(_assets):
+        app.mount("/assets", StaticFiles(directory=_assets), name="assets")
+
+    @app.get("/auth.html", include_in_schema=False)
+    async def _auth():
+        return FileResponse(os.path.join(WEB_DIR, "auth.html"))
+
+    @app.get("/web.html", include_in_schema=False)
+    async def _web():
+        return FileResponse(os.path.join(WEB_DIR, "web.html"))
+
+    @app.get("/play.html", include_in_schema=False)
+    async def _play():
+        return FileResponse(os.path.join(WEB_DIR, "play.html"))
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def _fav():
+        return FileResponse(os.path.join(WEB_DIR, "favicon.svg"))
+
+    @app.get("/", include_in_schema=False)
+    async def _index():
+        return FileResponse(os.path.join(WEB_DIR, "auth.html"))
 
 
 WAIT_CATEGORY, WAIT_TITLE = range(2)

@@ -14,7 +14,7 @@ from botocore import UNSIGNED
 from botocore.config import Config as BotoConfig
 
 
-API_BASE   = "https://xneo-web.onrender.com"
+API_BASE   = "https://xneo-3znw.onrender.com"
 API_SECRET = "7f3a9b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1"
 
 S3_ENDPOINT    = "https://s3.todus.cu"
