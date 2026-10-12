@@ -34,7 +34,7 @@ OUT = WORK / "out"
 SEG_DURATION = 4
 MAX_INPUT_SIZE = 2 * 1024 * 1024 * 1024
 DOWNLOAD_CHUNK = 1024 * 1024
-UPLOAD_CONCURRENCY = 16
+UPLOAD_CONCURRENCY = 4
 
 QUALITIES = [
     ("240p", 426, 240, "300k", "64k"),
@@ -47,7 +47,7 @@ _s3_cfg = BotoConfig(
     signature_version=UNSIGNED,
     retries={"max_attempts": 3, "mode": "adaptive"},
     max_pool_connections=20,
-    connect_timeout=30,
+    connect_timeout=60,
     read_timeout=300,
 )
 _s3_session = aioboto3.Session()
