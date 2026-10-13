@@ -1,4 +1,4 @@
-name: Telegram Bot (24/7)
+name: Telegram Bot + Converter
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 350
 
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +20,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
 
       - name: Install deps
         run: pip install -r bot/requirements.txt
@@ -29,8 +35,6 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GH_REPO: ${{ secrets.GH_REPO }}
-          GH_WORKFLOW: convert.yml
-          GH_REF: main
           API_BASE: ${{ secrets.API_BASE }}
           API_SECRET: ${{ secrets.API_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -39,7 +43,6 @@ jobs:
           set +e
           (
             sleep 5h
-            echo "Self-dispatch..."
             curl -s -X POST \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
