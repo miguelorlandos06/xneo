@@ -48,7 +48,7 @@ JWT_SECRET   = "b4e0c3d2f1a9e8d7c6b5a4938271605f4e3d2c1b0a9f8e7d6c5b4a3928170615
 
 BOT_TOKEN   = "8821834032:AAEWhoBJt8T-OM_n_3WwpjjmXaVgRqQv5AY"
 ADMIN_IDS   = {8282703640}
-GH_TOKEN    = "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"
+GH_TOKEN    = os.environ.get("GH_TOKEN", "")
 GH_REPO     = "miguelorlandos06/xneo"
 GH_WORKFLOW = "convert.yml"
 GH_REF      = "main"
@@ -65,6 +65,8 @@ JWT_EXP_HOURS = 24 * 7
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("xneo")
+if not os.environ.get("GH_TOKEN"):
+    print("! GH_TOKEN no configurado. El bot no podra disparar workflows.")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("botocore").setLevel(logging.WARNING)
 
