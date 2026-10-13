@@ -244,7 +244,7 @@ async def transcode(input_path: Path, out_dir: Path):
             "-g", str(gop), "-keyint_min", str(gop), "-sc_threshold", "0",
         ]
     for i, (_, _, _, _, ab) in enumerate(QUALITIES):
-        cmd += ["-map", "a:0?", f"-c:a:{i}", "aac", f"-b:a:{i}", ab, "-ac", "2"]
+        cmd += ["-map", "a:0", f"-c:a:{i}", "aac", f"-b:a:{i}", ab, "-ac", "2"]
 
     var_map = " ".join(
         f"v:{i},a:{i},name:{name}" for i, (name, *_ ) in enumerate(QUALITIES)
