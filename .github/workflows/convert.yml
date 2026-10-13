@@ -1,0 +1,39 @@
+name: Convert to HLS
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        required: true
+        type: string
+      source:
+        required: true
+        type: string
+      meta:
+        required: true
+        type: string
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+      - name: Install deps
+        run: pip install aiohttp aiofiles aioboto3 boto3
+      - name: Convert
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          SOURCE: ${{ inputs.source }}
+          META: ${{ inputs.meta }}
+          API_BASE: ${{ secrets.API_BASE }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+        run: python convert.py

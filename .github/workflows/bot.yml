@@ -1,4 +1,4 @@
-name: Telegram Bot + Converter
+name: Telegram Bot
 
 on:
   workflow_dispatch:
@@ -21,12 +21,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install ffmpeg
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
-          ffmpeg -version | head -1
-
       - name: Install deps
         run: pip install -r bot/requirements.txt
 
@@ -35,6 +29,8 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GH_REPO: ${{ secrets.GH_REPO }}
+          GH_WORKFLOW: convert.yml
+          GH_REF: main
           API_BASE: ${{ secrets.API_BASE }}
           API_SECRET: ${{ secrets.API_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
