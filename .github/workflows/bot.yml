@@ -1,0 +1,52 @@
+name: Telegram Bot (24/7)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */5 * * *'
+
+concurrency:
+  group: telegram-bot
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install -r bot/requirements.txt
+
+      - name: Run bot + schedule next
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ secrets.GH_REPO }}
+          GH_WORKFLOW: convert.yml
+          GH_REF: main
+          API_BASE: ${{ secrets.API_BASE }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_IDS: ${{ secrets.ADMIN_IDS }}
+        run: |
+          set +e
+          (
+            sleep 5h
+            echo "Self-dispatch..."
+            curl -s -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GH_REPO}/actions/workflows/bot.yml/dispatches" \
+              -d '{"ref":"main"}'
+          ) &
+          DISPATCH_PID=$!
+          timeout 20700 python bot/bot.py || true
+          kill $DISPATCH_PID 2>/dev/null || true
