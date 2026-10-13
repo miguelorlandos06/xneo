@@ -892,3 +892,42 @@ async def on_text_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     await msg.reply_text("Mándame un video o una URL. /start para ayuda.")
+
+
+# ============================================================
+# POLL: notifica al admin cuando un video termina
+# ============================================================
+async def poll_finished():
+    await asyncio.sleep(30)
+    while True:
+        try:
+            async with pool.acquire() as con:
+                rows = await con.fetch(
+                    """SELECT job_id, title, category, hls_url, admin_chat_id
+                       FROM videos
+                       WHERE status='ready' AND notified_at IS NULL AND admin_chat_id IS NOT NULL
+                       ORDER BY created_at DESC LIMIT 20"""
+                )
+            for v in rows:
+                text = (
+                    f"✅ *Publicado*\n\n"
+                    f"📺 {v['title']}\n"
+                    f"🏷️ {v['category']}\n"
+                    f"🆔 `{v['job_id']}`\n\n"
+                    f"`{v.get('hls_url') or ''}`"
+                )
+                try:
+                    await bot_app.bot.send_message(
+                        chat_id=int(v["admin_chat_id"]), text=text,
+                        parse_mode="Markdown", disable_web_page_preview=True,
+                    )
+                    async with pool.acquire() as con:
+                        await con.execute(
+                            "UPDATE videos SET notified_at=NOW() WHERE job_id=$1",
+                            v["job_id"],
+                        )
+                except Exception as e:
+                    log.warning("No pude notificar: %s", e)
+        except Exception as e:
+            log.warning("poll: %s", e)
+        await asyncio.sleep(60)
